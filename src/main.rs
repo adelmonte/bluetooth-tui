@@ -1,0 +1,105 @@
+//! bluetooth-tui — a modern terminal UI for Bluetooth (BlueZ).
+
+mod action;
+mod app;
+mod backend;
+mod config;
+mod core;
+mod ui;
+mod view;
+
+use std::path::PathBuf;
+use std::time::Duration;
+
+use clap::Parser;
+use crossterm::event::EventStream;
+use futures::StreamExt;
+
+use crate::app::App;
+use crate::config::{Config, APP, DEFAULT_TOML};
+
+#[derive(Parser, Debug)]
+#[command(name = "bluetooth-tui", version, about = "Manage Bluetooth devices from the terminal")]
+struct Cli {
+    /// Use a fake backend with sample devices (no Bluetooth needed)
+    #[arg(long)]
+    demo: bool,
+    /// Config file (default: ~/.config/bluetooth-tui/config.toml)
+    #[arg(short, long)]
+    config: Option<PathBuf>,
+    /// Print the default config and exit
+    #[arg(long)]
+    print_default_config: bool,
+    /// Verbose logging to the log file
+    #[arg(short, long)]
+    verbose: bool,
+}
+
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> color_eyre::Result<()> {
+    color_eyre::install()?;
+    let cli = Cli::parse();
+    if cli.print_default_config {
+        print!("{DEFAULT_TOML}");
+        return Ok(());
+    }
+    let _log = core::logging::init(APP, cli.verbose);
+    let loaded = core::config::load::<Config>(APP, cli.config.as_deref(), DEFAULT_TOML);
+    for w in &loaded.warnings {
+        tracing::warn!("{w}");
+    }
+
+    let mut backend = if cli.demo {
+        backend::demo::spawn()
+    } else {
+        backend::bluez::spawn(backend::bluez::Options {
+            trust_on_pair: loaded.value.general.trust_on_pair,
+            connect_on_pair: loaded.value.general.connect_on_pair,
+        })
+    };
+    let scan_on_start = loaded.value.general.scan_on_start;
+    let mut app = App::new(loaded.value, loaded.path, backend.tx.clone(), cli.demo, loaded.warnings);
+
+    let mut term = core::term::init(app.cfg.general.mouse)?;
+    let mut events = EventStream::new();
+    let mut tick = tokio::time::interval(Duration::from_millis(100));
+    let mut scan_requested = false;
+
+    let result: color_eyre::Result<()> = async {
+        loop {
+            term.draw(|f| view::render(&mut app, f))?;
+            tokio::select! {
+                e = events.next() => match e {
+                    Some(Ok(e)) => app.on_event(e),
+                    Some(Err(e)) => return Err(e.into()),
+                    None => break,
+                },
+                Some(ev) = backend.rx.recv() => {
+                    app.on_backend(ev);
+                    // Drain bursts (initial device list) before redrawing.
+                    while let Ok(ev) = backend.rx.try_recv() {
+                        app.on_backend(ev);
+                    }
+                    if scan_on_start && !scan_requested && app.adapter.as_ref().is_some_and(|a| a.powered) {
+                        scan_requested = true;
+                        let _ = backend.tx.send(backend::Cmd::Scan(true));
+                    }
+                }
+                _ = tick.tick() => app.on_tick(),
+            }
+            if app.quit {
+                break;
+            }
+        }
+        Ok(())
+    }
+    .await;
+
+    // Leave discovery running only if the user wants it; by default stop on exit.
+    if app.adapter.as_ref().is_some_and(|a| a.discovering) {
+        let _ = backend.tx.send(backend::Cmd::Scan(false));
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    core::term::restore();
+    result
+}
