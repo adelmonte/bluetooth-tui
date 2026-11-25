@@ -2,6 +2,13 @@
 name = "bluetooth-tui"
 version = "0.1.0"
 edition = "2024"
+description = "A modern terminal UI for Bluetooth (BlueZ)"
+license = "MIT"
+authors = ["adelmonte"]
+
+[profile.release]
+lto = "thin"
+strip = true
 
 [dependencies]
 bluer = { version = "0.17.4", features = ["bluetoothd"] }
