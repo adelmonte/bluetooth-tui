@@ -242,7 +242,7 @@ fn render_devices(app: &mut App, f: &mut Frame, area: Rect) {
         let r = Rect { y: inner.y + (n - offset) as u16, height: 1, ..inner };
         match row {
             Row::Header(t, extra) => {
-                let mut spans = vec![Span::styled(format!(" {}", t.to_uppercase()), theme.dim().add_modifier(Modifier::BOLD))];
+                let mut spans = vec![Span::styled(format!(" {t}"), theme.dim().add_modifier(Modifier::BOLD))];
                 if let Some(e) = extra {
                     spans.push(Span::raw("   "));
                     spans.push(e.clone());
@@ -386,7 +386,7 @@ fn render_details(app: &mut App, f: &mut Frame, area: Rect) {
     let profiles: Vec<&str> = d.uuids.iter().filter_map(|u| uuid_name(u)).collect();
     if !profiles.is_empty() || !d.uuids.is_empty() {
         line(f, Line::raw(""), None, app);
-        line(f, Line::from(Span::styled("PROFILES", t.dim().add_modifier(Modifier::BOLD))), None, app);
+        line(f, Line::from(Span::styled("Profiles", t.dim().add_modifier(Modifier::BOLD))), None, app);
         for p in &profiles {
             line(f, Line::from(Span::styled(format!(" · {p}"), t.text())), None, app);
         }
