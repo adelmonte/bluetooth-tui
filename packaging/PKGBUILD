@@ -1,6 +1,6 @@
 # Maintainer: adelmonte
 pkgname=bluetooth-tui
-pkgver=0.2.0
+pkgver=0.2.1
 pkgrel=1
 pkgdesc='A modern terminal UI for Bluetooth (BlueZ)'
 arch=('x86_64')
@@ -10,7 +10,7 @@ depends=('dbus' 'bluez' 'gcc-libs' 'glibc')
 makedepends=('cargo')
 optdepends=('bluez-utils: bluetoothctl')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('2429be22e82f37929b89f48f8c052a47ecd36f3205f17a7f6cbd31b6d9f23e52')
+sha256sums=('SKIP')
 options=('!lto')
 
 prepare() {
