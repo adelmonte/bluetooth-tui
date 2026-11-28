@@ -56,13 +56,6 @@ pub fn render(app: &mut App, f: &mut Frame) {
 
 fn render_header(app: &mut App, f: &mut Frame, area: Rect) {
     let t = &app.theme;
-    let logo = match app.cfg.general.icons {
-        IconSet::Nerd => " 󰂯 bluetooth ",
-        _ => " ᛒ bluetooth ",
-    };
-    let lw = logo.width() as u16;
-    f.render_widget(Span::styled(logo, t.accent().add_modifier(Modifier::BOLD)), Rect { width: lw, ..area });
-
     // Right side: adapter + scan status.
     let mut right: Vec<Span> = Vec::new();
     if app.demo {
@@ -79,7 +72,7 @@ fn render_header(app: &mut App, f: &mut Frame, area: Rect) {
         right.push(if a.powered { Span::styled("● on ", t.ok()) } else { Span::styled("○ off ", t.error()) });
     }
     let rw: u16 = right.iter().map(|s| s.content.width() as u16).sum();
-    let tabs_area = Rect { x: area.x + lw + 1, width: area.width.saturating_sub(lw + 1 + rw), ..area };
+    let tabs_area = Rect { width: area.width.saturating_sub(rw), ..area };
     let titles: Vec<&str> = Tab::ALL.iter().map(|t| t.title()).collect();
     let sel = Tab::ALL.iter().position(|x| *x == app.tab).unwrap_or(0);
     widgets::tabs(f, tabs_area, &titles, sel, &app.theme, &mut app.mouse, Target::Tab);
@@ -458,7 +451,7 @@ fn render_adapters(app: &mut App, f: &mut Frame, area: Rect) {
         ])
         .style(base);
         f.render_widget(Span::styled(" ".repeat(r.width as usize), base), r);
-        f.render_widget(line, r);
+        f.render_widget(widgets::fit_line(line, r.width as usize), r);
         app.mouse.add(r, Target::Adapter(i));
     }
 
@@ -491,7 +484,7 @@ fn render_adapters(app: &mut App, f: &mut Frame, area: Rect) {
         if r.y >= inner.bottom() {
             break;
         }
-        f.render_widget(l, r);
+        f.render_widget(widgets::fit_line(l, r.width as usize), r);
         app.mouse.add(r, Target::AdapterField(field));
     }
     let info_y = inner.y + 10;
@@ -747,5 +740,17 @@ mod snapshots {
         a.on_backend(Ev::AgentCancelled(1));
         a.on_backend(Ev::Agent { id: 2, device: "E8:9F:6D:44:20:B1".into(), req: AgentRequest::DisplayPasskey { passkey: 482913, entered: 3 } });
         println!("{}", dump(&mut a, 100, 24));
+    }
+
+    #[test]
+    fn snap_sweep() {
+        let mut a = app();
+        a.show_details = true;
+        for tab in Tab::ALL {
+            a.tab = tab;
+            for (w, h) in [(60, 18), (90, 24), (140, 30)] {
+                println!("=== {tab:?} {w}x{h}\n{}", dump(&mut a, w, h));
+            }
+        }
     }
 }

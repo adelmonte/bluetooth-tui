@@ -187,7 +187,7 @@ impl App {
     /// (paired, nearby) device lists, sorted for display.
     pub fn sections(&self) -> (Vec<&DeviceInfo>, Vec<&DeviceInfo>) {
         let mut paired: Vec<&DeviceInfo> = self.devices.values().filter(|d| d.paired && self.matches_filter(d)).collect();
-        paired.sort_by_key(|d| {
+        paired.sort_by_cached_key(|d| {
             (!self.is_favorite(&d.address), !d.connected, d.display_name().to_lowercase(), d.address.clone())
         });
         let mut nearby: Vec<&DeviceInfo> = self
@@ -274,16 +274,22 @@ impl App {
                     self.seen_counter += 1;
                     self.seen_order.insert(d.address.clone(), self.seen_counter);
                 }
+                // Only the updated device can have dropped out of view.
+                let recheck = self.selected.as_ref().is_none_or(|s| *s == d.address);
                 self.devices.insert(d.address.clone(), d);
-                self.fix_selection();
+                if recheck {
+                    self.fix_selection();
+                }
             }
             Ev::DeviceRemoved(a) => {
                 self.devices.remove(&a);
+                self.seen_order.remove(&a);
                 self.busy.remove(&a);
                 self.fix_selection();
             }
             Ev::ResetDevices => {
                 self.devices.clear();
+                self.seen_order.clear();
                 self.busy.clear();
                 self.selected = None;
             }
@@ -332,16 +338,19 @@ impl App {
         self.devices.get(addr).map(|d| d.display_name().to_string()).unwrap_or_else(|| addr.to_string())
     }
 
-    pub fn on_tick(&mut self) {
+    /// Advances timers; true when that changed what's on screen.
+    pub fn on_tick(&mut self) -> bool {
         self.tick = self.tick.wrapping_add(1);
-        self.toasts.prune();
+        let mut changed = self.toasts.prune();
         let timeout = self.cfg.general.scan_timeout;
         if let Some(since) = self.scan_since
             && timeout > 0 && since.elapsed() > Duration::from_secs(timeout) {
                 self.scan_since = None;
                 self.send(Cmd::Scan(false));
                 self.toasts.push(Level::Info, format!("Scan stopped after {timeout}s (scan_timeout in config)"));
+                changed = true;
             }
+        changed
     }
 
     // ------------------------------------------------------------ terminal events

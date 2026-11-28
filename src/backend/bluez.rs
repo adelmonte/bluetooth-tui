@@ -238,10 +238,15 @@ impl Backend {
                 }
             }
             Internal::Device(addr, p) => {
+                // Advertising data (manufacturer/service data) churns constantly
+                // during scans; only send updates for fields that are shown.
                 if let Some(info) = self.devices.get_mut(&addr) {
+                    let before = info.clone();
                     apply_device_prop(info, p);
-                    let info = info.clone();
-                    self.emit(Ev::Device(info));
+                    if *info != before {
+                        let info = info.clone();
+                        self.emit(Ev::Device(info));
+                    }
                 }
             }
         }
@@ -307,7 +312,8 @@ impl Backend {
             Cmd::SelectAdapter(n) => self.select_adapter(n).await,
             Cmd::Scan(on) => {
                 if on {
-                    if self.scan.is_some() {
+                    // The scan task ends on its own if discovery is stopped elsewhere.
+                    if self.scan.as_ref().is_some_and(|h| !h.is_finished()) {
                         return;
                     }
                     let Some(a) = self.adapter.clone() else { return };
