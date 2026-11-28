@@ -1,6 +1,6 @@
 [package]
 name = "bluetooth-tui"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "A modern terminal UI for Bluetooth (BlueZ)"
 license = "GPL-3.0-or-later"
@@ -19,7 +19,7 @@ dirs = "7.0.0"
 futures = "0.3.34"
 ratatui = "0.30"
 serde = { version = "1.0.229", features = ["derive"] }
-tokio = { version = "1.54.1", features = ["full"] }
+tokio = { version = "1.54.1", features = ["rt", "macros", "sync", "time"] }
 toml = "1.2.3"
 toml_edit = "0.25.21"
 tracing = "0.1.44"

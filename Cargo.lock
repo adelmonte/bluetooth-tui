@@ -200,7 +200,7 @@ dependencies = [
 
 [[package]]
 name = "bluetooth-tui"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bluer",
  "clap",
@@ -2144,9 +2144,7 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
- "parking_lot",
  "pin-project-lite",
- "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys",
