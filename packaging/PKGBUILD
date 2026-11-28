@@ -10,7 +10,7 @@ depends=('dbus' 'bluez' 'gcc-libs' 'glibc')
 makedepends=('cargo')
 optdepends=('bluez-utils: bluetoothctl')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('0cd2b65e9cfaaa49c29e6ec63af93fd6e908f0bcc0759e2d3433108adcd55582')
 options=('!lto')
 
 prepare() {
